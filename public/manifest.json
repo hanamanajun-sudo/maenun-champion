@@ -1,6 +1,6 @@
 {
-  "name": "매눈챔피언 - 진짜 혹은 AI",
-  "short_name": "매눈챔피언",
+  "name": "AI감별사 - 진짜 혹은 AI",
+  "short_name": "AI감별사",
   "description": "AI 가짜 영상·사진을 함께 가려내는 커뮤니티",
   "start_url": "/",
   "display": "standalone",

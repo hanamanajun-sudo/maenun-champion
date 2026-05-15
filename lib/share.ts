@@ -12,7 +12,7 @@ export async function shareContent(options: ShareOptions): Promise<void> {
   const { scenario, voteText, totalVotes, title, url: customUrl } = options;
   const pageUrl = customUrl ?? (typeof window !== 'undefined' ? window.location.href : '');
 
-  let shareTitle = '매눈챔피언 - 진짜 혹은 AI?';
+  let shareTitle = 'AI감별사 - 진짜 혹은 AI?';
   let shareText = '';
 
   switch (scenario) {
@@ -21,8 +21,8 @@ export async function shareContent(options: ShareOptions): Promise<void> {
       shareText = `${totalVotes ? totalVotes.toLocaleString() + '명이 함께 봤어요. ' : ''}나는 ${voteText ?? ''}이라고 했는데... 너는 어때?`;
       break;
     case 'app':
-      shareTitle = '매눈챔피언';
-      shareText = 'AI 가짜 영상 같이 가려내요! 매눈챔피언';
+      shareTitle = 'AI감별사';
+      shareText = 'AI 가짜 영상 같이 가려내요! AI감별사';
       break;
     case 'report':
       shareTitle = '의심 영상 제보';

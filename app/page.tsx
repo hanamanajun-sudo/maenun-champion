@@ -83,7 +83,7 @@ export default function HomePage() {
         }}
       >
         <span style={{ fontSize: 17, fontWeight: 900, color: '#1B3A6B', letterSpacing: '-0.5px' }}>
-          👁 매눈챔피언
+          👁 AI감별사
         </span>
         <Link
           href="/profile"

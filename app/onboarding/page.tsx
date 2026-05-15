@@ -102,7 +102,7 @@ export default function OnboardingPage() {
               <ShieldCheck size={56} color="#C6953E" weight="fill" />
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-              매눈챔피언
+              AI감별사
             </div>
             <h1 style={{ fontSize: 30, fontWeight: 900, color: 'var(--ink)', letterSpacing: -0.8, lineHeight: 1.25, marginBottom: 16 }}>
               진짜인지 가짜인지<br />

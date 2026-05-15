@@ -7,7 +7,7 @@ import Link from 'next/link';
 const SECTIONS = [
   {
     title: '1. 수집하는 정보',
-    content: `매눈챔피언은 최소한의 정보만 수집합니다.
+    content: `AI감별사은 최소한의 정보만 수집합니다.
 
 • 별명(닉네임): 사용자가 직접 입력하거나 자동 생성된 익명 별명
 • 투표 기록: 어떤 영상에 어떻게 투표했는지 (개인 식별 불가 형태)
@@ -59,7 +59,7 @@ Firebase의 개인정보 처리방침: https://firebase.google.com/support/priva
   },
   {
     title: '7. 아동 개인정보',
-    content: `매눈챔피언은 만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다. 만 14세 미만은 보호자의 동의 하에 서비스를 이용해야 합니다.`,
+    content: `AI감별사은 만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다. 만 14세 미만은 보호자의 동의 하에 서비스를 이용해야 합니다.`,
   },
   {
     title: '8. 개인정보 처리방침 변경',
@@ -84,10 +84,10 @@ export default function PrivacyPage() {
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 20px' }}>
         {/* 인트로 */}
         <div style={{ background: 'var(--navy)', borderRadius: 16, padding: '20px', marginBottom: 24, color: 'white' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#C6953E', letterSpacing: 1, marginBottom: 8 }}>매눈챔피언</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#C6953E', letterSpacing: 1, marginBottom: 8 }}>AI감별사</div>
           <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 10, lineHeight: 1.3 }}>개인정보를 소중히 다룹니다</h1>
           <p style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
-            매눈챔피언은 이메일, 전화번호, 이름을 수집하지 않습니다. 별명 하나만으로 모든 서비스를 이용할 수 있습니다.
+            AI감별사은 이메일, 전화번호, 이름을 수집하지 않습니다. 별명 하나만으로 모든 서비스를 이용할 수 있습니다.
           </p>
         </div>
 
