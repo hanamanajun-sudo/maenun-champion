@@ -17,6 +17,12 @@
   --red: #C8313D;
   --red-soft: #FCE8EA;
   --highlight: #F2C94C;
+  --teal: #009688;
+  --teal-deep: #00796B;
+  --teal-soft: #E0F2F1;
+  --yellow: #F5C416;
+  --yellow-deep: #D4A800;
+  --yellow-soft: #FFF8E1;
 }
 
 body {

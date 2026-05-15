@@ -5,10 +5,10 @@ export const runtime = 'edge';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ShieldCheck, Target, WarningOctagon, Trophy,
-  Sun, CheckCircle, UsersThree, Bell,
-  Lock, Sparkle,
-} from '@phosphor-icons/react';
+  ShieldCheck, Target, OctagonAlert, Trophy,
+  Sun, CheckCircle, Users, Bell,
+  Lock, Sparkles,
+} from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { updateNickname } from '@/lib/firestore';
 
@@ -23,14 +23,14 @@ function genNickname() {
 
 const FEATURES = [
   { Icon: Target,         color: '#1B3A6B', bg: '#EEF2F8', title: '오늘의 영상',    desc: '매일 새로운 AI 의심 영상이 올라와요. 진짜인지 가짜인지 투표해보세요.' },
-  { Icon: WarningOctagon, color: '#C8313D', bg: '#FCE8EA', title: '의심 영상 제보', desc: '내가 받은 수상한 영상·사진을 올리면 1,000명 패널이 함께 검증해요.' },
+  { Icon: OctagonAlert,   color: '#C8313D', bg: '#FCE8EA', title: '의심 영상 제보', desc: '내가 받은 수상한 영상·사진을 올리면 1,000명 패널이 함께 검증해요.' },
   { Icon: Trophy,         color: '#C6953E', bg: '#FCF3E0', title: '점수·뱃지',      desc: '맞출수록 점수가 쌓이고, 명예 뱃지를 수집할 수 있어요.' },
 ];
 
 const NOTIF_ITEMS = [
   { key: 'morning', Icon: Sun,           color: '#C6953E', title: '아침 도전 알림',    desc: '매일 오전 7시, 오늘의 영상 도착' },
   { key: 'result',  Icon: CheckCircle,   color: '#137F5E', title: '검증 결과 알림',    desc: '내가 제보한 영상의 판정이 나오면 알림' },
-  { key: 'friend',  Icon: UsersThree,    color: '#1B3A6B', title: '친구 활동 알림',    desc: '내가 공유한 문제를 친구가 풀었을 때' },
+  { key: 'friend',  Icon: Users,         color: '#1B3A6B', title: '친구 활동 알림',    desc: '내가 공유한 문제를 친구가 풀었을 때' },
   { key: 'urgent',  Icon: Bell,          color: '#C8313D', title: '긴급 가짜 영상 경보', desc: '바이럴 중인 위험 딥페이크 속보' },
 ];
 
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               marginBottom: 24, boxShadow: '0 8px 24px rgba(27,58,107,0.3)',
             }}>
-              <ShieldCheck size={56} color="#C6953E" weight="fill" />
+              <ShieldCheck size={56} color="#C6953E" />
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
               AI감별사
@@ -129,7 +129,7 @@ export default function OnboardingPage() {
               {FEATURES.map(f => (
                 <div key={f.title} style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px 18px', display: 'flex', gap: 16, alignItems: 'center', boxShadow: '0 1px 3px rgba(15,30,54,0.06)' }}>
                   <div style={{ width: 52, height: 52, borderRadius: 14, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <f.Icon size={28} color={f.color} weight="fill" />
+                    <f.Icon size={28} color={f.color} />
                   </div>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 3 }}>{f.title}</div>
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--green-soft)', borderRadius: 12 }}>
-              <Lock size={18} color="var(--green)" weight="fill" />
+              <Lock size={18} color="var(--green)" />
               <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 600 }}>로그인 없이 바로 시작해요. 이메일·전화번호 불필요.</span>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function OnboardingPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {NOTIF_ITEMS.map(item => (
                 <div key={item.key} style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 1px 3px rgba(15,30,54,0.06)' }}>
-                  <item.Icon size={26} color={item.color} weight="fill" style={{ flexShrink: 0 }} />
+                  <item.Icon size={26} color={item.color} style={{ flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{item.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-mute)' }}>{item.desc}</div>
@@ -209,7 +209,7 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--gold-soft)', borderRadius: 12 }}>
-              <Sparkle size={18} color="var(--gold)" weight="fill" />
+              <Sparkles size={18} color="var(--gold)" />
               <span style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600 }}>개인정보를 받지 않아요. 별명만으로 모든 활동 가능.</span>
             </div>
           </div>

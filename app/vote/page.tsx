@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Bot, Eye, Timer, Lightbulb } from 'lucide-react';
 import Mark from '@/components/Mark';
-import RBtn from '@/components/RBtn';
 import VideoEmbed from '@/components/VideoEmbed';
 import { mockMedia } from '@/lib/mockData';
 
@@ -77,7 +77,7 @@ export default function VotePage() {
         {/* 타이머 칩 */}
         <span
           style={{
-            background: timer < 6 ? '#C8313D' : '#1B3A6B',
+            background: timer < 6 ? '#C8313D' : 'var(--teal)',
             color: '#FFFFFF',
             fontSize: 13,
             fontWeight: 800,
@@ -86,9 +86,10 @@ export default function VotePage() {
             minWidth: 56,
             textAlign: 'center',
             transition: 'background 0.3s',
+            display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
-          ⏱ {timer}초
+          <Timer size={13} /> {timer}초
         </span>
       </div>
 
@@ -154,43 +155,33 @@ export default function VotePage() {
           <button
             onClick={() => setShowHint((v) => !v)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: showHint ? '#FCF3E0' : '#FFFFFF',
-              border: `1.5px solid ${showHint ? '#C6953E' : '#DDE3ED'}`,
-              borderRadius: 12,
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 700,
-              color: showHint ? '#C6953E' : '#3D4A60',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              transition: 'all 0.2s',
-              width: '100%',
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: showHint ? 'var(--yellow-soft)' : '#FFFFFF',
+              border: `1.5px solid ${showHint ? 'var(--yellow)' : '#DDE3ED'}`,
+              borderRadius: 12, padding: '10px 16px',
+              fontSize: 14, fontWeight: 700,
+              color: showHint ? 'var(--yellow-deep)' : '#3D4A60',
+              cursor: 'pointer', fontFamily: 'inherit',
+              transition: 'all 0.2s', width: '100%',
             }}
           >
-            💡 단서 보기
+            <Lightbulb size={16} />
+            단서 보기
             <span style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.7 }}>
               {showHint ? '▲' : '▼'}
             </span>
           </button>
 
           {showHint && (
-            <div
-              style={{
-                marginTop: 8,
-                background: '#FCF3E0',
-                border: '1.5px solid #F2C94C',
-                borderRadius: 12,
-                padding: '12px 16px',
-                fontSize: 14,
-                color: '#3D4A60',
-                lineHeight: 1.6,
-                animation: 'fadeUp 0.2s ease-out both',
-              }}
-            >
-              💡 {media.hint}
+            <div style={{
+              marginTop: 8, background: 'var(--yellow-soft)',
+              border: '1.5px solid var(--yellow)', borderRadius: 12,
+              padding: '12px 16px', fontSize: 14, color: '#3D4A60',
+              lineHeight: 1.6, animation: 'fadeUp 0.2s ease-out both',
+              display: 'flex', gap: 8, alignItems: 'flex-start',
+            }}>
+              <Lightbulb size={16} color="var(--yellow-deep)" style={{ flexShrink: 0, marginTop: 2 }} />
+              {media.hint}
             </div>
           )}
         </div>
@@ -200,73 +191,53 @@ export default function VotePage() {
           <button
             onClick={() => handleVote('yes')}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              minHeight: 88,
-              background: '#C8313D',
-              border: 'none',
-              borderRadius: 16,
-              cursor: 'pointer',
-              boxShadow: '0 4px 0 #9F2530',
-              transition: 'all 0.1s',
-              fontFamily: 'inherit',
-              padding: '16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              minHeight: 88, background: 'var(--teal)', border: 'none', borderRadius: 16,
+              cursor: 'pointer', boxShadow: '0 4px 0 var(--teal-deep)',
+              transition: 'all 0.1s', fontFamily: 'inherit', padding: '16px 24px',
             }}
             onMouseDown={(e) => {
               (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(3px)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 0 #9F2530';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 0 var(--teal-deep)';
             }}
             onMouseUp={(e) => {
               (e.currentTarget as HTMLButtonElement).style.transform = '';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 0 #9F2530';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 0 var(--teal-deep)';
             }}
           >
-            <span style={{ fontSize: 22 }}>🤖</span>
-            <span style={{ fontSize: 17, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px' }}>
-              가짜 같아요!
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.75)' }}>
-              AI가 만든 것 같습니다
-            </span>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Bot size={28} color="#FFFFFF" />
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px' }}>AI일 것 같아요</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)' }}>AI가 만든 가짜 같습니다</div>
+            </div>
           </button>
 
           <button
             onClick={() => handleVote('no')}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              minHeight: 88,
-              background: '#137F5E',
-              border: 'none',
-              borderRadius: 16,
-              cursor: 'pointer',
-              boxShadow: '0 4px 0 #0F6549',
-              transition: 'all 0.1s',
-              fontFamily: 'inherit',
-              padding: '16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              minHeight: 88, background: 'var(--yellow)', border: 'none', borderRadius: 16,
+              cursor: 'pointer', boxShadow: '0 4px 0 var(--yellow-deep)',
+              transition: 'all 0.1s', fontFamily: 'inherit', padding: '16px 24px',
             }}
             onMouseDown={(e) => {
               (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(3px)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 0 #0F6549';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 0 var(--yellow-deep)';
             }}
             onMouseUp={(e) => {
               (e.currentTarget as HTMLButtonElement).style.transform = '';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 0 #0F6549';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 0 var(--yellow-deep)';
             }}
           >
-            <span style={{ fontSize: 22 }}>👁</span>
-            <span style={{ fontSize: 17, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px' }}>
-              진짜 같아요!
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.75)' }}>
-              실제인 것 같습니다
-            </span>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Eye size={28} color="#0F1E36" />
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0F1E36', letterSpacing: '-0.3px' }}>진짜일 것 같아요</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(0,0,0,0.55)' }}>실제로 찍은 것 같습니다</div>
+            </div>
           </button>
         </div>
 
