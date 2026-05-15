@@ -429,6 +429,13 @@ export default function ProfilePage() {
         >
           📤 앱 친구에게 알리기
         </button>
+
+        {/* 하단 링크 */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 8, paddingBottom: 8 }}>
+          <a href="/privacy" style={{ fontSize: 12, color: '#7A8499', textDecoration: 'none', fontWeight: 600 }}>개인정보처리방침</a>
+          <span style={{ color: '#DDE3ED' }}>|</span>
+          <a href="mailto:hanamanajun@gmail.com" style={{ fontSize: 12, color: '#7A8499', textDecoration: 'none', fontWeight: 600 }}>문의하기</a>
+        </div>
       </div>
     </div>
   );

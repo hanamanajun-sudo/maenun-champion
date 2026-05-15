@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Mark from '@/components/Mark';
 import RBtn from '@/components/RBtn';
@@ -51,7 +52,14 @@ function TimerChip() {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [tab, setTab] = useState<TrendingTab>('today');
+
+  useEffect(() => {
+    if (!localStorage.getItem('onboarded')) {
+      router.replace('/onboarding');
+    }
+  }, [router]);
 
   const filteredMedia = mockMedia
     .filter((m) => (tab === 'contested' ? m.contested : m.period === tab))

@@ -99,6 +99,11 @@ export type ReportSubmissionDoc = {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+export async function updateNickname(uid: string, nickname: string): Promise<void> {
+  const ref = doc(getDb(), 'users', uid);
+  await updateDoc(ref, { nickname });
+}
+
 export async function getOrCreateUser(uid: string, defaultNickname: string): Promise<UserDoc> {
   const ref = doc(getDb(), 'users', uid);
   const snap = await getDoc(ref);
