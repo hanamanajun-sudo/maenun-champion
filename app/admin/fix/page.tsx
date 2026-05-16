@@ -11,6 +11,11 @@ const FIXES = [
     title: '부산 지하철 사슴 난동',
     embedUrl: 'https://www.youtube.com/embed/7zhp1njxjxk?shorts=1',
   },
+  {
+    id: 'm1',
+    title: '"Okay, you can go now"',
+    embedUrl: 'https://www.youtube.com/embed/t85BopxzXBI?shorts=1',
+  },
 ];
 
 export default function FixPage() {
