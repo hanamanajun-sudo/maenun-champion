@@ -7,17 +7,18 @@ type VideoEmbedProps = {
   title: string;
 };
 
-function isShorts(url: string) {
-  // Shorts는 원래 URL에 /shorts/ 가 있거나, embed ID를 추적해서 판단 어려움
-  // 대신 세로 비율로 통일하면 둘 다 잘 보임
-  // 명시적으로 shorts 여부를 저장하지 않으므로 16:9 기본 유지하되
-  // ?shorts=1 파라미터가 있으면 세로로 표시
-  return url.includes('shorts') || url.includes('?shorts');
+function isVertical(url: string) {
+  return url.includes('shorts') || url.includes('?shorts') || url.includes('tiktok.com');
+}
+
+function isTikTok(url: string) {
+  return url.includes('tiktok.com');
 }
 
 export default function VideoEmbed({ embedUrl, title }: VideoEmbedProps) {
   const [loaded, setLoaded] = useState(false);
-  const vertical = isShorts(embedUrl);
+  const vertical = isVertical(embedUrl);
+  const tiktok = isTikTok(embedUrl);
 
   return (
     <div
@@ -68,6 +69,7 @@ export default function VideoEmbed({ embedUrl, title }: VideoEmbedProps) {
         title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        referrerPolicy={tiktok ? 'strict-origin-when-cross-origin' : undefined}
         onLoad={() => setLoaded(true)}
         style={{
           width: '100%',

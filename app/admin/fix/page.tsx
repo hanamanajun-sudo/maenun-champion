@@ -16,6 +16,11 @@ const FIXES = [
     title: '"Okay, you can go now"',
     embedUrl: 'https://www.youtube.com/embed/t85BopxzXBI?shorts=1',
   },
+  {
+    id: 'm2',
+    title: '시골의 저녁',
+    embedUrl: 'https://www.tiktok.com/embed/v2/7579538023147179271',
+  },
 ];
 
 export default function FixPage() {

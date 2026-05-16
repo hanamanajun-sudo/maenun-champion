@@ -45,17 +45,22 @@ export default function AdminMediaPage() {
   }
 
   function toEmbedUrl(raw: string): string {
-    const isShorts = raw.includes('/shorts/');
+    const trimmed = raw.trim();
+    // TikTok
+    const tiktokMatch = trimmed.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
+    if (tiktokMatch) return `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}`;
+    // YouTube
+    const isShorts = trimmed.includes('/shorts/');
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/,
       /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
       /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/,
     ];
     for (const p of patterns) {
-      const m = raw.match(p);
+      const m = trimmed.match(p);
       if (m) return `https://www.youtube.com/embed/${m[1]}${isShorts ? '?shorts=1' : ''}`;
     }
-    return raw.trim();
+    return trimmed;
   }
 
   async function save(id: string) {
