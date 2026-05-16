@@ -26,12 +26,13 @@ export default function FixPage() {
       return;
     }
 
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      unsub();
+    async function run() {
+      let user = auth!.currentUser;
       if (!user) {
-        await signInAnonymously(auth!);
-        return;
+        const r = await signInAnonymously(auth!);
+        user = r.user;
       }
+      addLog('system', `🔐 로그인: ${user.uid.slice(0, 10)}...`, true);
 
       for (const fix of FIXES) {
         try {
@@ -39,12 +40,17 @@ export default function FixPage() {
             title: fix.title,
             embedUrl: fix.embedUrl,
           });
-          addLog(fix.id, `✅ ${fix.id} → "${fix.title}" 업데이트 완료`, true);
+          addLog(fix.id, `✅ ${fix.id} → "${fix.title}"`, true);
         } catch (e) {
           addLog(fix.id, `❌ ${fix.id} 실패: ${e}`, false);
         }
       }
       setDone(true);
+    }
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      run();
     });
   }, []);
 
