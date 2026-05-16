@@ -44,15 +44,25 @@ export default function AdminMediaPage() {
     setNewTitle(m.title);
   }
 
+  function toEmbedUrl(raw: string): string {
+    const isShorts = raw.includes('/shorts/');
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
+      /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/,
+    ];
+    for (const p of patterns) {
+      const m = raw.match(p);
+      if (m) return `https://www.youtube.com/embed/${m[1]}${isShorts ? '?shorts=1' : ''}`;
+    }
+    return raw.trim();
+  }
+
   async function save(id: string) {
     if (!db || !uid) return;
     setSaving(true);
     try {
-      const embedUrl = newUrl.trim()
-        .replace('youtube.com/watch?v=', 'youtube.com/embed/')
-        .replace('youtube.com/shorts/', 'youtube.com/embed/')
-        .replace('youtu.be/', 'youtube.com/embed/');
-
+      const embedUrl = toEmbedUrl(newUrl);
       await updateDoc(doc(db, 'media', id), {
         ...(newTitle.trim() && { title: newTitle.trim() }),
         embedUrl,

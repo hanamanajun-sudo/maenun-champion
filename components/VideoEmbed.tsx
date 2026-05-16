@@ -7,18 +7,28 @@ type VideoEmbedProps = {
   title: string;
 };
 
+function isShorts(url: string) {
+  // Shorts는 원래 URL에 /shorts/ 가 있거나, embed ID를 추적해서 판단 어려움
+  // 대신 세로 비율로 통일하면 둘 다 잘 보임
+  // 명시적으로 shorts 여부를 저장하지 않으므로 16:9 기본 유지하되
+  // ?shorts=1 파라미터가 있으면 세로로 표시
+  return url.includes('shorts') || url.includes('?shorts');
+}
+
 export default function VideoEmbed({ embedUrl, title }: VideoEmbedProps) {
   const [loaded, setLoaded] = useState(false);
+  const vertical = isShorts(embedUrl);
 
   return (
     <div
       style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: '16/9',
+        aspectRatio: vertical ? '9/16' : '16/9',
         borderRadius: '12px',
         overflow: 'hidden',
         background: '#0F1E36',
+        maxHeight: vertical ? '70vh' : undefined,
       }}
     >
       {!loaded && (
