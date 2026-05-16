@@ -8,6 +8,8 @@ import RBtn from '@/components/RBtn';
 import VerdictBadge from '@/components/VerdictBadge';
 import MiniBar from '@/components/MiniBar';
 import { mockMedia } from '@/lib/mockData';
+import { getMediaList, type MediaDoc } from '@/lib/firestore';
+import { useUserStore } from '@/lib/store';
 
 type TrendingTab = 'today' | 'week' | 'contested';
 
@@ -54,6 +56,8 @@ function TimerChip() {
 export default function HomePage() {
   const router = useRouter();
   const [tab, setTab] = useState<TrendingTab>('today');
+  const [trendingMedia, setTrendingMedia] = useState<MediaDoc[]>([]);
+  const { user } = useUserStore();
 
   useEffect(() => {
     if (!localStorage.getItem('onboarded')) {
@@ -61,9 +65,25 @@ export default function HomePage() {
     }
   }, [router]);
 
-  const filteredMedia = mockMedia
-    .filter((m) => (tab === 'contested' ? m.contested : m.period === tab))
-    .slice(0, 3);
+  useEffect(() => {
+    async function loadTrending() {
+      try {
+        const period = tab === 'contested' ? 'today' : tab;
+        const data = await getMediaList(period as 'today' | 'week' | 'month');
+        const result = tab === 'contested' ? data.filter((m) => m.contested) : data;
+        setTrendingMedia(result.length > 0 ? result : mockMedia
+          .filter((m) => tab === 'contested' ? m.contested : m.period === tab)
+          .map((m) => ({ ...m, publishedAt: null as never, isActive: true })));
+      } catch {
+        setTrendingMedia(mockMedia
+          .filter((m) => tab === 'contested' ? m.contested : m.period === tab)
+          .map((m) => ({ ...m, publishedAt: null as never, isActive: true })));
+      }
+    }
+    loadTrending();
+  }, [tab]);
+
+  const filteredMedia = trendingMedia.slice(0, 3);
 
   return (
     <div style={{ paddingBottom: 96, background: 'var(--bg)' }}>
@@ -89,7 +109,7 @@ export default function HomePage() {
           href="/profile"
           style={{ fontSize: 13, fontWeight: 700, color: '#3D4A60', textDecoration: 'none' }}
         >
-          호기심많은너구리 <span style={{ color: '#7A8499' }}>›</span>
+          {user?.nickname ?? '...'} <span style={{ color: '#7A8499' }}>›</span>
         </Link>
       </div>
 
@@ -238,8 +258,8 @@ export default function HomePage() {
         {/* 내 현황 카드 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
           {[
-            { emoji: '🏆', label: '총 점수', value: '2,840' },
-            { emoji: '🔥', label: '연속 참여', value: '7일' },
+            { emoji: '🏆', label: '총 점수', value: user ? `${user.score.toLocaleString()}` : '...' },
+            { emoji: '🔥', label: '연속 참여', value: user ? `${user.streak}일` : '...' },
           ].map((item) => (
             <div
               key={item.label}

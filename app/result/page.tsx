@@ -1,26 +1,17 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import RBtn from '@/components/RBtn';
 import ReactionBar from '@/components/ReactionBar';
 import CommentItem from '@/components/CommentItem';
+import { submitVote, getComments, addComment, type MediaDoc, type CommentDoc } from '@/lib/firestore';
 import { mockMedia } from '@/lib/mockData';
 import { shareContent } from '@/lib/share';
-
-const media = mockMedia[0];
-const YES_COUNT = 5224;
-const NO_COUNT = 3203;
-const TOTAL = YES_COUNT + NO_COUNT;
-const YES_PCT = Math.round((YES_COUNT / TOTAL) * 100);
-const NO_PCT = 100 - YES_PCT;
-
-const MOCK_COMMENTS = [
-  { id: 'c1', nickname: '날카로운독수리', text: '입 모양이 확실히 어색했어요. 말이 끝날 때 입이 늦게 닫혀요.', reaction: 'suspicious' as const, likes: 47 },
-  { id: 'c2', nickname: '신중한여우', text: '배경 화면이 흔들리는 것 같았는데 사람은 너무 선명해요.', reaction: 'suspicious' as const, likes: 31 },
-  { id: 'c3', nickname: '차분한부엉이', text: '저는 진짜인 것 같았는데 생각보다 많은 분들이 가짜라고 하시네요.', reaction: 'interesting' as const, likes: 14 },
-];
+import { useUserStore } from '@/lib/store';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 function DonutChart({ yesPct, noPct, total }: { yesPct: number; noPct: number; total: number }) {
   const [animated, setAnimated] = useState(false);
@@ -30,8 +21,6 @@ function DonutChart({ yesPct, noPct, total }: { yesPct: number; noPct: number; t
   const circumference = 2 * Math.PI * R;
   const yesDash = animated ? (yesPct / 100) * circumference : 0;
   const noDash = animated ? (noPct / 100) * circumference : 0;
-  const yesOffset = 0;
-  const noOffset = -(yesDash);
 
   useEffect(() => {
     const t = setTimeout(() => setAnimated(true), 100);
@@ -42,53 +31,29 @@ function DonutChart({ yesPct, noPct, total }: { yesPct: number; noPct: number; t
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
       <div style={{ position: 'relative', width: 160, height: 160 }}>
         <svg width="160" height="160" viewBox="0 0 160 160">
-          {/* 배경 트랙 */}
           <circle cx={cx} cy={cy} r={R} fill="none" stroke="#DDE3ED" strokeWidth={20} />
-          {/* 진짜(녹색) */}
           <circle
-            cx={cx} cy={cy} r={R}
-            fill="none"
-            stroke="#137F5E"
-            strokeWidth={20}
+            cx={cx} cy={cy} r={R} fill="none" stroke="#137F5E" strokeWidth={20}
             strokeDasharray={`${noDash} ${circumference}`}
-            strokeDashoffset={noOffset}
+            strokeDashoffset={-yesDash}
             strokeLinecap="round"
             transform={`rotate(-90 ${cx} ${cy})`}
             style={{ transition: 'stroke-dasharray 0.8s ease' }}
           />
-          {/* 가짜(빨강) */}
           <circle
-            cx={cx} cy={cy} r={R}
-            fill="none"
-            stroke="#C8313D"
-            strokeWidth={20}
+            cx={cx} cy={cy} r={R} fill="none" stroke="#C8313D" strokeWidth={20}
             strokeDasharray={`${yesDash} ${circumference}`}
-            strokeDashoffset={yesOffset}
+            strokeDashoffset={0}
             strokeLinecap="round"
             transform={`rotate(-90 ${cx} ${cy})`}
             style={{ transition: 'stroke-dasharray 0.8s ease' }}
           />
         </svg>
-        {/* 중앙 텍스트 */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-          }}
-        >
-          <span style={{ fontSize: 13, fontWeight: 800, color: '#0F1E36' }}>
-            {total.toLocaleString()}명
-          </span>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#0F1E36' }}>{total.toLocaleString()}명</span>
           <span style={{ fontSize: 10, fontWeight: 600, color: '#7A8499' }}>참여</span>
         </div>
       </div>
-
-      {/* 범례 */}
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: '#C8313D', display: 'inline-block' }} />
@@ -106,15 +71,96 @@ function DonutChart({ yesPct, noPct, total }: { yesPct: number; noPct: number; t
 function ResultContent() {
   const searchParams = useSearchParams();
   const vote = searchParams.get('vote') as 'yes' | 'no' | null;
+  const mediaId = searchParams.get('mediaId') ?? 'm1';
+
+  const { uid, user, updateScore } = useUserStore();
+  const [media, setMedia] = useState<MediaDoc | null>(null);
+  const [scoreDelta, setScoreDelta] = useState(5);
+  const [agreedWithMajority, setAgreedWithMajority] = useState(false);
+  const [comments, setComments] = useState<CommentDoc[]>([]);
   const [commentText, setCommentText] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const voteSubmitted = useRef(false);
 
-  const agreedWithMajority = vote === 'yes'; // yes(가짜)가 62%로 다수
-  const scoreDelta = YES_PCT >= 60 && vote === 'yes' ? 20 : YES_PCT < 40 && vote === 'no' ? 20 : YES_PCT >= 40 && YES_PCT <= 60 ? 10 : 5;
+  useEffect(() => {
+    async function load() {
+      // 미디어 로드
+      let mediaData: MediaDoc | null = null;
+      if (db) {
+        try {
+          const snap = await getDoc(doc(db, 'media', mediaId));
+          if (snap.exists()) mediaData = { id: snap.id, ...snap.data() } as MediaDoc;
+        } catch { /* fallback */ }
+      }
+      if (!mediaData) {
+        const fallback = mockMedia.find((m) => m.id === mediaId) ?? mockMedia[0];
+        mediaData = { ...fallback, publishedAt: null as never, isActive: true };
+      }
+      setMedia(mediaData);
+
+      // 투표 저장 (한 번만)
+      if (uid && vote && !voteSubmitted.current) {
+        voteSubmitted.current = true;
+        try {
+          const result = await submitVote(uid, mediaId, vote);
+          setScoreDelta(result.scoreDelta);
+          setAgreedWithMajority(result.agreedWithMajority);
+          updateScore(result.scoreDelta);
+          // 투표 후 최신 카운트 다시 로드
+          if (db) {
+            const snap = await getDoc(doc(db, 'media', mediaId));
+            if (snap.exists()) setMedia({ id: snap.id, ...snap.data() } as MediaDoc);
+          }
+        } catch { /* 중복 투표 등 무시 */ }
+      } else if (vote) {
+        // uid 없을 때 로컬 계산
+        const total = mediaData.yesCount + mediaData.noCount;
+        const yesPct = total > 0 ? (mediaData.yesCount / total) * 100 : 50;
+        if (yesPct >= 60 && vote === 'yes') { setScoreDelta(20); setAgreedWithMajority(true); }
+        else if (yesPct <= 40 && vote === 'no') { setScoreDelta(20); setAgreedWithMajority(true); }
+        else if (yesPct > 40 && yesPct < 60) { setScoreDelta(10); }
+      }
+
+      // 코멘트 로드
+      try {
+        const c = await getComments(mediaId);
+        setComments(c);
+      } catch { /* 무시 */ }
+
+      setLoading(false);
+    }
+    load();
+  }, [uid, vote, mediaId, updateScore]);
+
+  const handleCommentSubmit = async () => {
+    if (!commentText.trim() || submitted) return;
+    if (uid && user) {
+      try {
+        await addComment(mediaId, uid, user.nickname, commentText, 'suspicious');
+        setSubmitted(true);
+      } catch { setSubmitted(true); }
+    } else {
+      setSubmitted(true);
+    }
+  };
+
+  if (loading || !media) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ fontSize: 14, color: '#7A8499' }}>결과 집계 중...</div>
+      </div>
+    );
+  }
+
+  const total = media.yesCount + media.noCount;
+  const yesPct = total > 0 ? Math.round((media.yesCount / total) * 100) : 50;
+  const noPct = 100 - yesPct;
+  const totalScore = (user?.score ?? 2840);
 
   const handleShare = () => {
     const voteText = vote === 'yes' ? '가짜' : '진짜';
-    shareContent({ scenario: 'result', voteText, totalVotes: TOTAL });
+    shareContent({ scenario: 'result', voteText, totalVotes: total });
   };
 
   return (
@@ -127,10 +173,7 @@ function ResultContent() {
           background: agreedWithMajority ? '#1B3A6B' : '#C6953E',
           padding: '28px 16px 24px',
           textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 8,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         }}
       >
         <div style={{ fontSize: 40 }}>{agreedWithMajority ? '👥' : '🦁'}</div>
@@ -144,26 +187,11 @@ function ResultContent() {
 
       <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* 점수 획득 카드 */}
-        <div
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #DDE3ED',
-            borderRadius: 16,
-            padding: '16px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(15,30,54,0.06)',
-          }}
-        >
+        {/* 점수 카드 */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #DDE3ED', borderRadius: 16, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(15,30,54,0.06)' }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#7A8499', marginBottom: 4 }}>
-              획득 점수
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#0F1E36', letterSpacing: '-0.7px' }}>
-              +{scoreDelta}점
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#7A8499', marginBottom: 4 }}>획득 점수</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#0F1E36', letterSpacing: '-0.7px' }}>+{scoreDelta}점</div>
             <div style={{ fontSize: 12, color: '#7A8499', marginTop: 2 }}>
               {agreedWithMajority && scoreDelta === 20 && '👥 다수와 함께했어요'}
               {!agreedWithMajority && scoreDelta === 10 && '🦁 팽팽한 의견이에요'}
@@ -173,36 +201,21 @@ function ResultContent() {
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#7A8499', marginBottom: 2 }}>총 점수</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: '#1B3A6B', letterSpacing: '-0.5px' }}>
-              {(2840 + scoreDelta).toLocaleString()}점
+              {totalScore.toLocaleString()}점
             </div>
           </div>
         </div>
 
         {/* 도넛 차트 */}
-        <div
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #DDE3ED',
-            borderRadius: 16,
-            padding: '20px 16px',
-            boxShadow: '0 2px 8px rgba(15,30,54,0.06)',
-          }}
-        >
+        <div style={{ background: '#FFFFFF', border: '1px solid #DDE3ED', borderRadius: 16, padding: '20px 16px', boxShadow: '0 2px 8px rgba(15,30,54,0.06)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 800, color: '#0F1E36', margin: '0 0 16px', textAlign: 'center' }}>
             현재 광장의 의견
           </h2>
-          <DonutChart yesPct={YES_PCT} noPct={NO_PCT} total={TOTAL} />
+          <DonutChart yesPct={yesPct} noPct={noPct} total={total} />
         </div>
 
         {/* 힌트 카드 */}
-        <div
-          style={{
-            background: '#FCF3E0',
-            border: '1.5px solid #F2C94C',
-            borderRadius: 16,
-            padding: '16px 18px',
-          }}
-        >
+        <div style={{ background: '#FCF3E0', border: '1.5px solid #F2C94C', borderRadius: 16, padding: '16px 18px' }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#C6953E', marginBottom: 8, letterSpacing: 0.5 }}>
             💡 많은 분들이 이걸 발견했어요
           </div>
@@ -212,61 +225,42 @@ function ResultContent() {
         </div>
 
         {/* 코멘트 섹션 */}
-        <div
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #DDE3ED',
-            borderRadius: 16,
-            padding: '16px 16px',
-            boxShadow: '0 2px 8px rgba(15,30,54,0.06)',
-          }}
-        >
+        <div style={{ background: '#FFFFFF', border: '1px solid #DDE3ED', borderRadius: 16, padding: '16px 16px', boxShadow: '0 2px 8px rgba(15,30,54,0.06)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 800, color: '#0F1E36', margin: '0 0 12px' }}>
             왜 그렇게 생각했어요?
           </h2>
 
-          <ReactionBar mediaId={media.id} uid="demo-uid" />
+          <ReactionBar mediaId={mediaId} uid={uid ?? 'guest'} />
 
-          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <div style={{ marginTop: 12 }}>
             <textarea
               value={commentText}
-              onChange={(e) => {
-                if (e.target.value.length <= 140) setCommentText(e.target.value);
-              }}
+              onChange={(e) => { if (e.target.value.length <= 140) setCommentText(e.target.value); }}
               placeholder="선택사항 · 140자 이내"
               rows={3}
               style={{
-                flex: 1,
-                border: '1.5px solid #DDE3ED',
-                borderRadius: 12,
-                padding: '10px 12px',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                color: '#0F1E36',
-                resize: 'none',
-                outline: 'none',
-                background: '#F4F6FA',
-                lineHeight: 1.5,
+                width: '100%', boxSizing: 'border-box',
+                border: '1.5px solid #DDE3ED', borderRadius: 12,
+                padding: '10px 12px', fontSize: 14,
+                fontFamily: 'inherit', color: '#0F1E36',
+                resize: 'none', outline: 'none',
+                background: '#F4F6FA', lineHeight: 1.5,
               }}
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
             <span style={{ fontSize: 12, color: '#7A8499' }}>{commentText.length}/140</span>
             <button
-              onClick={() => {
-                if (commentText.trim()) setSubmitted(true);
-              }}
+              onClick={handleCommentSubmit}
+              disabled={submitted}
               style={{
-                background: '#1B3A6B',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 10,
-                padding: '8px 18px',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
+                background: submitted ? '#DDE3ED' : '#1B3A6B',
+                color: submitted ? '#7A8499' : '#FFFFFF',
+                border: 'none', borderRadius: 10,
+                padding: '8px 18px', fontSize: 13, fontWeight: 700,
+                cursor: submitted ? 'default' : 'pointer',
                 fontFamily: 'inherit',
-                boxShadow: '0 3px 0 #0F254A',
+                boxShadow: submitted ? 'none' : '0 3px 0 #0F254A',
               }}
             >
               {submitted ? '✓ 등록됨' : '등록'}
@@ -274,14 +268,14 @@ function ResultContent() {
           </div>
 
           {/* 코멘트 목록 */}
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#7A8499', marginBottom: 4 }}>
-              최신 코멘트
+          {comments.length > 0 && (
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7A8499', marginBottom: 4 }}>최신 코멘트</div>
+              {comments.slice(0, 3).map((c, i) => (
+                <CommentItem key={c.id ?? i} comment={c} />
+              ))}
             </div>
-            {MOCK_COMMENTS.slice(0, 3).map((c) => (
-              <CommentItem key={c.id} comment={c} />
-            ))}
-          </div>
+          )}
         </div>
 
         {/* 하단 버튼 */}
@@ -292,19 +286,11 @@ function ResultContent() {
           <button
             onClick={handleShare}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              background: '#FFFFFF',
-              border: '1.5px solid #DDE3ED',
-              borderRadius: 16,
-              padding: '14px',
-              fontSize: 15,
-              fontWeight: 700,
-              color: '#1B3A6B',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: '#FFFFFF', border: '1.5px solid #DDE3ED',
+              borderRadius: 16, padding: '14px',
+              fontSize: 15, fontWeight: 700, color: '#1B3A6B',
+              cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
             📤 친구에게 물어보기

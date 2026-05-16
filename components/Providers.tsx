@@ -3,29 +3,38 @@
 import { useEffect, useState } from 'react';
 import { signInAnon, onAuthStateChanged } from '@/lib/auth';
 import { auth } from '@/lib/firebase';
+import { getOrCreateUser } from '@/lib/firestore';
+import { useUserStore } from '@/lib/store';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const setUser = useUserStore((s) => s.setUser);
 
   useEffect(() => {
-    // Firebase 미설정 시(auth=null) 스피너 없이 바로 렌더
     if (!auth) {
       setReady(true);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
         try {
           await signInAnon();
         } catch {
           // Firebase 미설정 시 무시
         }
+      } else {
+        try {
+          const userDoc = await getOrCreateUser(firebaseUser.uid, '');
+          setUser(firebaseUser.uid, userDoc);
+        } catch {
+          // 유저 로드 실패 시 무시
+        }
       }
       setReady(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [setUser]);
 
   if (!ready) {
     return (
