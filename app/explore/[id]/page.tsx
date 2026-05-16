@@ -80,22 +80,21 @@ export default function ExploreDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     async function load() {
-      // 미디어 로드
+      let mediaData: MediaDoc | null = null;
       if (db) {
         try {
           const snap = await getDoc(doc(db, 'media', id));
-          if (snap.exists()) { setMedia({ id: snap.id, ...snap.data() } as MediaDoc); }
+          if (snap.exists()) mediaData = { id: snap.id, ...snap.data() } as MediaDoc;
         } catch { /* fallback */ }
       }
-      if (!media) {
+      if (!mediaData) {
         const fallback = mockMedia.find((m) => m.id === id) ?? mockMedia[0];
-        setMedia({ ...fallback, publishedAt: null as never, isActive: true });
+        mediaData = { ...fallback, publishedAt: null as never, isActive: true };
       }
-      // 코멘트 로드
+      setMedia(mediaData);
       try { setComments(await getComments(id)); } catch { /* 무시 */ }
     }
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleCommentSubmit = async () => {
