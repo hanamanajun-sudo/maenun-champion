@@ -79,13 +79,16 @@ export default function SeedPage() {
         이미 있으면 덮어씁니다.
       </p>
 
-      {/* 인증 상태 표시 */}
-      <div style={{ background: '#f4f6fa', border: '1px solid #dde3ed', borderRadius: 8, padding: '8px 12px', marginBottom: 20, fontSize: 12 }}>
-        {!authReady
-          ? '⏳ 인증 확인 중...'
-          : uid
-          ? `🟢 로그인됨: ${uid.slice(0, 12)}...`
-          : '🔴 비로그인 (시딩 시 자동 로그인)'}
+      {/* 연결 정보 표시 */}
+      <div style={{ background: '#f4f6fa', border: '1px solid #dde3ed', borderRadius: 8, padding: '10px 12px', marginBottom: 20, fontSize: 12, lineHeight: 2 }}>
+        <div>🔥 프로젝트 ID: <strong>{process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '❌ 미설정'}</strong></div>
+        <div>
+          {!authReady
+            ? '⏳ 인증 확인 중...'
+            : uid
+            ? `🟢 로그인됨: ${uid}`
+            : '🔴 비로그인 (시딩 시 자동 로그인)'}
+        </div>
       </div>
 
       <button
