@@ -33,9 +33,17 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
   if (uid !== ADMIN_UID) {
     return (
-      <div style={{ padding: 60, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#C8313D' }}>접근 권한이 없습니다.</p>
+      <div style={{ padding: 32, fontFamily: 'monospace', fontSize: 13, lineHeight: 1.8 }}>
+        <div style={{ fontSize: 40, marginBottom: 12, textAlign: 'center' }}>🚫</div>
+        <p style={{ fontWeight: 700, color: '#C8313D', marginBottom: 12 }}>접근 권한이 없습니다.</p>
+        <p>현재 UID:</p>
+        <code style={{ background: '#f0f0f0', padding: '4px 8px', borderRadius: 4, display: 'block', wordBreak: 'break-all', marginBottom: 12 }}>
+          {uid}
+        </code>
+        <p>어드민 UID:</p>
+        <code style={{ background: '#f0f0f0', padding: '4px 8px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+          {ADMIN_UID}
+        </code>
       </div>
     );
   }
