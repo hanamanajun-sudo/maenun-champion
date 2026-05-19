@@ -4,15 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const TABS = [
-  { href: '/',            icon: '🏠', label: '홈' },
-  { href: '/explore',     icon: '📋', label: '광장' },
-  { href: '/report',      icon: '📢', label: '제보' },
-  { href: '/my-activity', icon: '👤', label: '내 활동' },
-  { href: '/profile',     icon: '🏅', label: '명예의전당' },
+  { href: '/',       icon: '🏠', label: '홈' },
+  { href: '/report', icon: '📢', label: '제보' },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+
+  if (pathname === '/onboarding') return null;
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -55,6 +54,7 @@ export default function BottomNav() {
               transition: 'color 0.15s',
               minWidth: 0,
               padding: '6px 2px',
+              position: 'relative',
             }}
           >
             <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.icon}</span>
@@ -64,10 +64,6 @@ export default function BottomNav() {
                 fontWeight: active ? 800 : 600,
                 lineHeight: 1,
                 textAlign: 'center',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '100%',
               }}
             >
               {tab.label}
