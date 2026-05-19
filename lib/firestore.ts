@@ -104,6 +104,14 @@ export async function updateNickname(uid: string, nickname: string): Promise<voi
   await updateDoc(ref, { nickname });
 }
 
+export async function updateUserAuthInfo(
+  uid: string,
+  info: { isAnonymous: boolean; email?: string }
+): Promise<void> {
+  const ref = doc(getDb(), 'users', uid);
+  await updateDoc(ref, info);
+}
+
 export async function getOrCreateUser(uid: string, defaultNickname: string): Promise<UserDoc> {
   const ref = doc(getDb(), 'users', uid);
   const snap = await getDoc(ref);

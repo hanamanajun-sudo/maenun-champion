@@ -1,6 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { auth } from '@/lib/firebase';
+import { googleAuthPopup, signOutUser, onAuthStateChanged } from '@/lib/auth';
+import { updateNickname } from '@/lib/firestore';
+import { useUserStore } from '@/lib/store';
 import { shareContent } from '@/lib/share';
 
 type RankTab = 'national' | 'local';
@@ -34,6 +38,20 @@ const LOCAL_RANK = [
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
+function getLevelLabel(level: number): string {
+  if (level <= 2) return '신입 감별사';
+  if (level <= 5) return '탐정 견습생';
+  if (level <= 10) return '매눈 수련생';
+  if (level <= 15) return '매눈고수';
+  if (level <= 20) return '수석 감별관';
+  return '감별 전설';
+}
+
+function getLevelProgress(score: number, level: number): number {
+  const threshold = level * 300;
+  return Math.min(100, Math.round((score % threshold) / threshold * 100));
+}
+
 function DeltaBadge({ delta }: { delta: number }) {
   if (delta === 0) return <span style={{ fontSize: 11, color: '#7A8499' }}>─</span>;
   return (
@@ -44,14 +62,80 @@ function DeltaBadge({ delta }: { delta: number }) {
 }
 
 export default function ProfilePage() {
+  const uid = useUserStore((s) => s.uid);
+  const user = useUserStore((s) => s.user);
+  const setNicknameStore = useUserStore((s) => s.setNickname);
+
   const [rankTab, setRankTab] = useState<RankTab>('national');
   const [showEditNickname, setShowEditNickname] = useState(false);
-  const [nickname, setNickname] = useState('호기심많은너구리');
   const [nicknameInput, setNicknameInput] = useState('');
+  const [isGoogleLinked, setIsGoogleLinked] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
-  const rankList = rankTab === 'national' ? NATIONAL_RANK : LOCAL_RANK;
+  useEffect(() => {
+    function check() {
+      const cur = auth?.currentUser;
+      const linked = cur?.providerData.some((p) => p.providerId === 'google.com') ?? false;
+      setIsGoogleLinked(linked);
+      setGoogleEmail(cur?.email ?? null);
+      if (linked) setLinkLoading(false); // 팝업 promise가 막혀도 auth 변경으로 해제
+    }
+    check();
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, check);
+    return () => unsub();
+  }, []);
+
+  const nickname = user?.nickname ?? '...';
+  const score = user?.score ?? 0;
+  const streak = user?.streak ?? 0;
+  const level = user?.level ?? 1;
+  const totalVotes = user?.totalVotes ?? 0;
+  const correctVotes = user?.correctVotes ?? 0;
+  const majorityRate = totalVotes > 0 ? Math.round((correctVotes / totalVotes) * 100) : 0;
+  const levelPct = getLevelProgress(score, level);
+  const levelLabel = getLevelLabel(level);
   const unlockedCount = BADGES.filter((b) => b.unlocked).length;
-  const levelPct = 84;
+  const rankList = rankTab === 'national' ? NATIONAL_RANK : LOCAL_RANK;
+
+  const handleGoogleLink = () => {
+    setLinkLoading(true);
+    setLinkError(null);
+    googleAuthPopup(
+      () => setLinkLoading(false),
+      (code) => {
+        setLinkLoading(false);
+        if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+          setLinkError('구글 연결에 실패했어요. 다시 시도해주세요.');
+        }
+      }
+    );
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveNickname = async () => {
+    if (!uid || !nicknameInput.trim()) {
+      setShowEditNickname(false);
+      return;
+    }
+    try {
+      await updateNickname(uid, nicknameInput.trim());
+      setNicknameStore(nicknameInput.trim());
+    } catch (e) {
+      console.error(e);
+    }
+    setNicknameInput('');
+    setShowEditNickname(false);
+  };
 
   const handleShare = () => {
     shareContent({ scenario: 'app' });
@@ -114,10 +198,7 @@ export default function ProfilePage() {
                 }}
               >취소</button>
               <button
-                onClick={() => {
-                  if (nicknameInput.trim()) setNickname(nicknameInput.trim());
-                  setShowEditNickname(false);
-                }}
+                onClick={handleSaveNickname}
                 style={{
                   flex: 1, padding: '12px', border: 'none',
                   borderRadius: 12, background: '#1B3A6B', fontSize: 14,
@@ -190,7 +271,7 @@ export default function ProfilePage() {
                 boxShadow: '0 2px 0 #A57A2A',
               }}
             >
-              Lv.12 매눈고수
+              Lv.{level} {levelLabel}
             </span>
           </div>
         </div>
@@ -208,9 +289,9 @@ export default function ProfilePage() {
           }}
         >
           {[
-            { label: '총 점수', value: '2,840' },
-            { label: '연속 참여', value: '7일' },
-            { label: '다수 합류율', value: '78%' },
+            { label: '총 점수', value: score.toLocaleString() },
+            { label: '연속 참여', value: streak > 0 ? `${streak}일` : '-' },
+            { label: '다수 합류율', value: totalVotes > 0 ? `${majorityRate}%` : '-' },
           ].map((s, i) => (
             <div
               key={i}
@@ -234,7 +315,7 @@ export default function ProfilePage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
-              Lv.12 → Lv.13
+              Lv.{level} → Lv.{level + 1}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#F2C94C' }}>
               {levelPct}%
@@ -253,21 +334,49 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* 구글 연동 안내 */}
+        {/* 구글 연동 */}
         <div style={{ marginTop: 14, textAlign: 'center' }}>
-          <button
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 12,
-              color: 'rgba(255,255,255,0.55)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              textDecoration: 'underline',
-            }}
-          >
-            다른 기기에서도 이어하려면? → 구글로 연결하기
-          </button>
+          {!isGoogleLinked ? (
+            <button
+              onClick={handleGoogleLink}
+              disabled={linkLoading}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 12,
+                color: linkLoading ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)',
+                cursor: linkLoading ? 'default' : 'pointer',
+                fontFamily: 'inherit',
+                textDecoration: 'underline',
+              }}
+            >
+              {linkLoading ? '구글 연결 중...' : '다른 기기에서도 이어하려면? → 구글로 연결하기'}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                🔗 {googleEmail}
+              </span>
+              <button
+                onClick={handleSignOut}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  color: 'rgba(255,255,255,0.6)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >로그아웃</button>
+            </div>
+          )}
+          {linkError && (
+            <p style={{ fontSize: 11, color: '#F2C94C', margin: '6px 0 0', fontWeight: 600 }}>
+              {linkError}
+            </p>
+          )}
         </div>
       </div>
 
@@ -299,7 +408,7 @@ export default function ProfilePage() {
                   gap: 4,
                   padding: '10px 4px',
                   borderRadius: 12,
-                  background: b.unlocked ? '#F4F6FA' : '#F4F6FA',
+                  background: '#F4F6FA',
                   border: b.unlocked ? '1.5px solid #DDE3ED' : '1.5px solid #EEF0F4',
                   opacity: b.unlocked ? 1 : 0.45,
                 }}
@@ -330,7 +439,6 @@ export default function ProfilePage() {
         >
           <h2 style={{ fontSize: 15, fontWeight: 800, color: '#0F1E36', margin: '0 0 12px' }}>랭킹</h2>
 
-          {/* 랭킹 탭 */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {([
               { key: 'national' as RankTab, label: '전국' },
@@ -357,7 +465,6 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* 랭킹 리스트 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {rankList.map((r) => (
               <div

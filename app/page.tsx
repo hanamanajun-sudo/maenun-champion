@@ -8,17 +8,9 @@ import RBtn from '@/components/RBtn';
 import VerdictBadge from '@/components/VerdictBadge';
 import MiniBar from '@/components/MiniBar';
 import { mockMedia } from '@/lib/mockData';
-import { getMediaList, type MediaDoc } from '@/lib/firestore';
-import { useUserStore } from '@/lib/store';
+import { getMediaList, getTodayQuiz, type MediaDoc } from '@/lib/firestore';
 
-type TrendingTab = 'today' | 'week' | 'contested';
-
-const MENU_ITEMS = [
-  { href: '/explore',     emoji: '📋', label: '둘러보기',     desc: '모두가 가려낸 영상' },
-  { href: '/report',      emoji: '📢', label: '제보하기',     desc: '의심 영상 올리기' },
-  { href: '/my-activity', emoji: '👤', label: '내가 참여한 것', desc: '내 투표 기록' },
-  { href: '/profile',     emoji: '🏅', label: '명예의 전당',   desc: '점수·뱃지·랭킹' },
-];
+type TrendingTab = 'latest' | 'hot' | 'contested';
 
 function ThumbPlaceholder({ hue, size = 52 }: { hue: number; size?: number }) {
   return (
@@ -34,30 +26,11 @@ function ThumbPlaceholder({ hue, size = 52 }: { hue: number; size?: number }) {
   );
 }
 
-function TimerChip() {
-  const [time] = useState(15);
-  return (
-    <span
-      style={{
-        background: time < 6 ? '#C8313D' : 'rgba(255,255,255,0.15)',
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 800,
-        padding: '4px 10px',
-        borderRadius: 8,
-        letterSpacing: 0.5,
-      }}
-    >
-      ⏱ {time}초
-    </span>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
-  const [tab, setTab] = useState<TrendingTab>('today');
+  const [tab, setTab] = useState<TrendingTab>('latest');
   const [trendingMedia, setTrendingMedia] = useState<MediaDoc[]>([]);
-  const { user } = useUserStore();
+  const [todayMedia, setTodayMedia] = useState<MediaDoc | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem('onboarded')) {
@@ -66,24 +39,58 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
+    getTodayQuiz()
+      .then(setTodayMedia)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     async function loadTrending() {
       try {
-        const period = tab === 'contested' ? 'today' : tab;
-        const data = await getMediaList(period as 'today' | 'week' | 'month');
-        const result = tab === 'contested' ? data.filter((m) => m.contested) : data;
-        setTrendingMedia(result.length > 0 ? result : mockMedia
-          .filter((m) => tab === 'contested' ? m.contested : m.period === tab)
-          .map((m) => ({ ...m, publishedAt: null as never, isActive: true })));
+        const [d1, d2, d3] = await Promise.all([
+          getMediaList('today'),
+          getMediaList('week'),
+          getMediaList('month'),
+        ]);
+        const seen = new Set<string>();
+        const all = [...d1, ...d2, ...d3].filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+
+        let result: MediaDoc[];
+        if (tab === 'latest') {
+          result = [...all].sort((a, b) => {
+            const ta = a.publishedAt?.seconds ?? 0;
+            const tb = b.publishedAt?.seconds ?? 0;
+            return tb - ta;
+          });
+        } else if (tab === 'hot') {
+          result = [...all].sort((a, b) => b.totalVotes - a.totalVotes);
+        } else {
+          result = all.filter((m) => {
+            if (m.contested) return true;
+            if (!m.totalVotes) return false;
+            return Math.abs(m.yesCount / m.totalVotes - 0.5) < 0.1;
+          });
+        }
+
+        setTrendingMedia(
+          result.length > 0
+            ? result
+            : mockMedia.map((m) => ({ ...m, publishedAt: null as never, isActive: true }))
+        );
       } catch {
-        setTrendingMedia(mockMedia
-          .filter((m) => tab === 'contested' ? m.contested : m.period === tab)
-          .map((m) => ({ ...m, publishedAt: null as never, isActive: true })));
+        setTrendingMedia(
+          mockMedia.map((m) => ({ ...m, publishedAt: null as never, isActive: true }))
+        );
       }
     }
     loadTrending();
   }, [tab]);
 
-  const filteredMedia = trendingMedia.slice(0, 3);
+  const filteredMedia = trendingMedia.slice(0, 10);
 
   return (
     <div style={{ paddingBottom: 96, background: 'var(--bg)' }}>
@@ -93,7 +100,6 @@ export default function HomePage() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           padding: '16px 16px 12px',
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
@@ -105,12 +111,6 @@ export default function HomePage() {
         <span style={{ fontSize: 17, fontWeight: 900, color: '#1B3A6B', letterSpacing: '-0.5px' }}>
           👁 AI감별사
         </span>
-        <Link
-          href="/profile"
-          style={{ fontSize: 13, fontWeight: 700, color: '#3D4A60', textDecoration: 'none' }}
-        >
-          {user?.nickname ?? '...'} <span style={{ color: '#7A8499' }}>›</span>
-        </Link>
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
@@ -132,7 +132,7 @@ export default function HomePage() {
             style={{ width: 8, height: 8, borderRadius: '50%', background: '#C8313D', display: 'inline-block' }}
           />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#C8313D' }}>
-            지금 12,847명이 함께 보고 있어요
+            지금 함께 가려내는 중
           </span>
         </div>
 
@@ -160,11 +160,11 @@ export default function HomePage() {
             background: 'linear-gradient(135deg, #1B3A6B, #0F254A)',
             borderRadius: 20,
             padding: '20px 18px 18px',
-            marginBottom: 16,
+            marginBottom: 28,
             boxShadow: '0 8px 32px rgba(15,30,54,0.18)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ marginBottom: 12 }}>
             <span
               style={{
                 background: '#F2C94C',
@@ -176,9 +176,8 @@ export default function HomePage() {
                 letterSpacing: 0.5,
               }}
             >
-              오늘의 도전 · #87
+              오늘의 도전
             </span>
-            <TimerChip />
           </div>
 
           {/* 썸네일 */}
@@ -196,7 +195,9 @@ export default function HomePage() {
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(135deg, hsl(220,60%,20%), hsl(220,40%,10%))',
+                background: todayMedia
+                  ? `linear-gradient(135deg, hsl(${todayMedia.thumbHue},60%,20%), hsl(${todayMedia.thumbHue},40%,10%))`
+                  : 'linear-gradient(135deg, hsl(220,60%,20%), hsl(220,40%,10%))',
               }}
             />
             <div
@@ -228,6 +229,25 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* 제목 */}
+          {todayMedia && (
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'rgba(255,255,255,0.9)',
+                margin: '0 0 12px',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                lineHeight: 1.4,
+              }}
+            >
+              {todayMedia.title}
+            </p>
+          )}
+
           {/* 참여자 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <div style={{ display: 'flex' }}>
@@ -246,70 +266,15 @@ export default function HomePage() {
               ))}
             </div>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-              지금 8,427명이 함께 보고 있어요
+              {todayMedia
+                ? `${todayMedia.totalVotes.toLocaleString()}명이 참여했어요`
+                : '지금 참여해보세요'}
             </span>
           </div>
 
           <Link href="/vote" style={{ display: 'block' }}>
             <RBtn variant="gold" size="xl">🔍 지금 가려내기</RBtn>
           </Link>
-        </div>
-
-        {/* 내 현황 카드 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          {[
-            { emoji: '🏆', label: '총 점수', value: user ? `${user.score.toLocaleString()}` : '...' },
-            { emoji: '🔥', label: '연속 참여', value: user ? `${user.streak}일` : '...' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #DDE3ED',
-                borderRadius: 14,
-                padding: '14px 12px',
-                textAlign: 'center',
-                boxShadow: '0 1px 4px rgba(15,30,54,0.04)',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#7A8499', marginBottom: 4 }}>
-                {item.emoji} {item.label}
-              </div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: '#0F1E36', letterSpacing: '-0.7px' }}>
-                {item.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 핵심 메뉴 그리드 2×2 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
-          {MENU_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #DDE3ED',
-                  borderRadius: 16,
-                  padding: 16,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  minHeight: 110,
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: 36, lineHeight: 1 }}>{item.emoji}</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#0F1E36', letterSpacing: '-0.3px' }}>
-                  {item.label}
-                </span>
-                <span style={{ fontSize: 12, color: '#7A8499', fontWeight: 500 }}>
-                  {item.desc}
-                </span>
-              </div>
-            </Link>
-          ))}
         </div>
 
         {/* 트렌딩 섹션 */}
@@ -321,8 +286,8 @@ export default function HomePage() {
           {/* 탭 */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {([
-              { key: 'today' as TrendingTab, label: '오늘' },
-              { key: 'week' as TrendingTab, label: '이번 주' },
+              { key: 'latest' as TrendingTab, label: '최신' },
+              { key: 'hot'    as TrendingTab, label: '핫' },
               { key: 'contested' as TrendingTab, label: '팽팽' },
             ]).map((t) => (
               <button
@@ -410,7 +375,7 @@ export default function HomePage() {
                       </p>
                       <MiniBar yesCount={m.yesCount} noCount={m.noCount} />
                       <span style={{ fontSize: 11, color: '#7A8499', marginTop: 4, display: 'block' }}>
-                        {m.totalVotes.toLocaleString()}명 참여 · 💬 코멘트
+                        {m.totalVotes.toLocaleString()}명 참여
                       </span>
                     </div>
                   </div>
@@ -418,6 +383,22 @@ export default function HomePage() {
               ))
             )}
           </div>
+
+          {/* 전체 보기 */}
+          <Link
+            href="/explore"
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              padding: '14px 0',
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#1B3A6B',
+              textDecoration: 'none',
+            }}
+          >
+            전체 보기 →
+          </Link>
         </div>
       </div>
     </div>

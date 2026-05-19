@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, setDoc, onSnapshot, collection, serverTimestamp } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { MediaDoc } from '@/lib/firestore';
+import { useUserStore } from '@/lib/store';
+import AdminGuard from '@/components/AdminGuard';
 
 function toEmbedUrl(raw: string): string {
   const trimmed = raw.trim();
@@ -43,7 +44,7 @@ const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 800, color: '#7A849
 const row: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
 
 export default function AdminMediaPage() {
-  const [uid, setUid] = useState<string | null>(null);
+  const uid = useUserStore((s) => s.uid);
   const [mediaList, setMediaList] = useState<MediaDoc[]>([]);
 
   const [editing, setEditing] = useState<string | null>(null);
@@ -58,15 +59,6 @@ export default function AdminMediaPage() {
   const [form, setForm] = useState<NewForm>(EMPTY);
   const [adding, setAdding] = useState(false);
   const [addMsg, setAddMsg] = useState('');
-
-  useEffect(() => {
-    if (!auth) return;
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) { const r = await signInAnonymously(auth!); setUid(r.user.uid); }
-      else setUid(user.uid);
-    });
-    return unsub;
-  }, []);
 
   useEffect(() => {
     if (!db) return;
@@ -135,10 +127,11 @@ export default function AdminMediaPage() {
   const f = (key: keyof NewForm, val: string | number) => setForm((p) => ({ ...p, [key]: val }));
 
   return (
+    <AdminGuard>
     <div style={{ padding: '24px 16px', maxWidth: 600, margin: '0 auto', fontFamily: 'inherit' }}>
       <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 4, color: '#0F1E36' }}>🎬 미디어 관리</h1>
       <p style={{ fontSize: 13, color: '#7A8499', marginBottom: 20 }}>
-        {uid ? `🟢 ${uid.slice(0, 8)}...` : '⏳ 인증 중...'}{' · '}총 {mediaList.length}개
+        🟢 {uid?.slice(0, 8)}...{' · '}총 {mediaList.length}개
       </p>
 
       {/* ── 새 미디어 추가 ── */}
@@ -285,5 +278,6 @@ export default function AdminMediaPage() {
         )}
       </div>
     </div>
+    </AdminGuard>
   );
 }

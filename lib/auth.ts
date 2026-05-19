@@ -1,6 +1,16 @@
 'use client';
 
-import { signInAnonymously, linkWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import {
+  signInAnonymously,
+  linkWithPopup,
+  signInWithPopup,
+  signInWithCredential,
+  signOut,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  type Auth,
+  type AuthError,
+} from 'firebase/auth';
 import { auth } from './firebase';
 import { getOrCreateUser } from './firestore';
 
@@ -13,35 +23,61 @@ const NOUNS = [
   '두더지', '까치', '수달', '족제비', '담비',
 ];
 
-function generateNickname(): string {
+export function generateNickname(): string {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
   return `${adj}${noun}`;
 }
 
 export async function signInAnon(): Promise<void> {
-  if (!auth) return; // Firebase 미설정 시 스킵
+  if (!auth) return;
   try {
     const result = await signInAnonymously(auth);
-    const user = result.user;
-    await getOrCreateUser(user.uid, generateNickname());
+    await getOrCreateUser(result.user.uid, generateNickname());
   } catch (error) {
     console.error('익명 로그인 실패:', error);
     throw error;
   }
 }
 
-export async function linkWithGoogle(): Promise<void> {
-  if (!auth) return;
-  const user = auth.currentUser;
-  if (!user) throw new Error('로그인된 사용자가 없습니다.');
+export function googleAuthPopup(
+  onSuccess: () => void,
+  onError: (code: string) => void
+): void {
+  if (!auth) { onError('no-auth'); return; }
+
   const provider = new GoogleAuthProvider();
-  try {
-    await linkWithPopup(user, provider);
-  } catch (error) {
-    console.error('구글 연동 실패:', error);
-    throw error;
-  }
+  const user = auth.currentUser;
+  const authRef = auth as Auth;
+
+  const promise = user?.isAnonymous
+    ? linkWithPopup(user, provider)
+    : signInWithPopup(authRef, provider);
+
+  promise
+    .then(() => onSuccess())
+    .catch(async (err: AuthError) => {
+      if (err.code === 'auth/credential-already-in-use') {
+        const credential = GoogleAuthProvider.credentialFromError(err);
+        if (credential && auth) {
+          try {
+            await signInWithCredential(authRef, credential);
+            onSuccess();
+            return;
+          } catch {
+            // fallback도 실패한 경우만 에러 처리
+          }
+        }
+      } else {
+        console.error('Google auth error:', err.code, err.message);
+      }
+      onError(err.code ?? 'unknown');
+    });
+}
+
+export async function signOutUser(): Promise<void> {
+  if (!auth) return;
+  await signOut(auth);
 }
 
 export { onAuthStateChanged };

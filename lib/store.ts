@@ -8,6 +8,7 @@ type UserStore = {
   user: UserDoc | null;
   setUser: (uid: string, user: UserDoc) => void;
   updateScore: (delta: number) => void;
+  setNickname: (nickname: string) => void;
 };
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -17,5 +18,9 @@ export const useUserStore = create<UserStore>((set) => ({
   updateScore: (delta) =>
     set((state) =>
       state.user ? { user: { ...state.user, score: state.user.score + delta } } : {}
+    ),
+  setNickname: (nickname) =>
+    set((state) =>
+      state.user ? { user: { ...state.user, nickname } } : {}
     ),
 }));

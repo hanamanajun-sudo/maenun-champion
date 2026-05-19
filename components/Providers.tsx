@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signInAnon, onAuthStateChanged } from '@/lib/auth';
+import { signInAnon, onAuthStateChanged, generateNickname } from '@/lib/auth';
 import { auth } from '@/lib/firebase';
-import { getOrCreateUser } from '@/lib/firestore';
+import { getOrCreateUser, updateUserAuthInfo } from '@/lib/firestore';
 import { useUserStore } from '@/lib/store';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         }
       } else {
         try {
-          const userDoc = await getOrCreateUser(firebaseUser.uid, '');
+          const userDoc = await getOrCreateUser(firebaseUser.uid, generateNickname());
+          if (!firebaseUser.isAnonymous && userDoc.isAnonymous) {
+            await updateUserAuthInfo(firebaseUser.uid, {
+              isAnonymous: false,
+              email: firebaseUser.email || undefined,
+            });
+            userDoc.isAnonymous = false;
+            if (firebaseUser.email) userDoc.email = firebaseUser.email;
+          }
           setUser(firebaseUser.uid, userDoc);
         } catch {
           // 유저 로드 실패 시 무시
